@@ -62,7 +62,7 @@ def preprocess_text(data: pd.Series):
     data = data.str.replace(pattern, '')
 
     # removal of punctuations and numbers
-    pattern = re.compile(r'[^ąćęłńóśźżĄĆĘŁŃÓŚŹŻa-zA-Z\s]')
+    pattern = re.compile(r'[^_ąćęłńóśźżĄĆĘŁŃÓŚŹŻa-zA-Z\s]')
     data = data.str.replace(pattern, '')
 
     # remove more than one space
