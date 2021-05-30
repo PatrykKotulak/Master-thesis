@@ -2,6 +2,8 @@ import re
 import demoji
 import pandas as pd
 
+from stopwords import stopwords
+
 
 def remove_quoting_comments(data):
     pattern = r'^RT.*'
@@ -38,11 +40,14 @@ def create_dataframe_emoji_comparison(dict_count_emoji_0: dict,
     # create dataframe for comparison emoji
     plot_emoticons = pd.concat(
         [pd.DataFrame(dict_count_emoji_0.items(), columns=['emoji',
-                                            'Response_0']).set_index('emoji'),
-            pd.DataFrame(dict_count_emoji_1.items(), columns=['emoji',
-                                            'Response_1']).set_index('emoji'),
-            pd.DataFrame(dict_count_emoji_2.items(), columns=['emoji',
-                                            'Response_2']).set_index('emoji')],
+                                                           'Response_0']).set_index(
+            'emoji'),
+         pd.DataFrame(dict_count_emoji_1.items(), columns=['emoji',
+                                                           'Response_1']).set_index(
+             'emoji'),
+         pd.DataFrame(dict_count_emoji_2.items(), columns=['emoji',
+                                                           'Response_2']).set_index(
+             'emoji')],
         axis=1).sort_values(by=sort_data, ascending=False)
 
     # select most frequency emoji
@@ -52,7 +57,7 @@ def create_dataframe_emoji_comparison(dict_count_emoji_0: dict,
     return plot_emoticons
 
 
-def preprocess_text(data: pd.Series):
+def preprocess_text(data: pd.Series, lemantizer=False, stopwords_remove=False):
     # remove of @name
     pattern = re.compile(r'@\w+\s')
     data = data.str.replace(pattern, '')
@@ -76,4 +81,17 @@ def preprocess_text(data: pd.Series):
     # removal of capitalization
     data = data.str.lower()
 
+    # tokenizing
+    if lemantizer:
+        data = data.apply(lambda x: x.split())
+    if stopwords_remove:
+        data = data.apply(
+            lambda x: [item for item in x if item not in stopwords])
+
+    if lemantizer and stopwords_remove:
+        for i in range(len(data)):
+            data[i] = ' '.join(data[i])
+            tweets_p = data
+    print(data)
+    print('-----')
     return data
