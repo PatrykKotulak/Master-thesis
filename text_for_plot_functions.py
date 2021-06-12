@@ -2,16 +2,6 @@ import re
 import demoji
 import pandas as pd
 
-from stopwords import stopwords
-
-
-def remove_quoting_comments(data):
-    pattern = r'^RT.*'
-    remove = data['Comment'].str.contains(pattern)
-    data = data[~remove].reset_index(drop=True)
-    return data
-
-
 def extract_emoticons(text: str,
                       emoji_for_response_0: list,
                       emoji_for_response_1: list,
@@ -55,43 +45,3 @@ def create_dataframe_emoji_comparison(dict_count_emoji_0: dict,
                                       (plot_emoticons['Response_1'].isna()) &
                                       (plot_emoticons['Response_2'].isna()))]
     return plot_emoticons
-
-
-def preprocess_text(data: pd.Series, lemantizer=False, stopwords_remove=False):
-    # remove of @name
-    pattern = re.compile(r'@\w+\s')
-    data = data.str.replace(pattern, '')
-
-    # remove of links https
-    pattern = re.compile(r"https?[:\/\/]+[a-zA-Z0-9.\-\/?=_~:#%]+")
-    data = data.str.replace(pattern, '')
-
-    # removal of punctuations and numbers
-    pattern = re.compile(r'[^_ąćęłńóśźżĄĆĘŁŃÓŚŹŻa-zA-Z\s]')
-    data = data.str.replace(pattern, '')
-
-    # remove more than one space
-    pattern = re.compile(r'\s+')
-    data = data.str.replace(pattern, ' ')
-
-    # remove beginning and ending task space
-    pattern = re.compile(r'^\s+|\s+?$')
-    data = data.str.replace(pattern, '')
-
-    # removal of capitalization
-    data = data.str.lower()
-
-    # tokenizing
-    if lemantizer:
-        data = data.apply(lambda x: x.split())
-    if stopwords_remove:
-        data = data.apply(
-            lambda x: [item for item in x if item not in stopwords])
-
-    if lemantizer and stopwords_remove:
-        for i in range(len(data)):
-            data[i] = ' '.join(data[i])
-            tweets_p = data
-    print(data)
-    print('-----')
-    return data
