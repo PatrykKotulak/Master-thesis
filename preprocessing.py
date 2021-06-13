@@ -85,8 +85,7 @@ class Preprocessing:
         # remove of capitalization
         self.x_raw = self.x_raw.str.lower()
 
-        # remove stopwords
-
+    # remove stopwords
     def stopwords_remove(self):
         self.x_raw = self.x_raw.apply(lambda x: x.split())
         self.x_raw = self.x_raw.apply(

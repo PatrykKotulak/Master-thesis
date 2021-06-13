@@ -6,7 +6,6 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-
 from argparse import Namespace
 from sklearn.model_selection import train_test_split
 from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
@@ -14,8 +13,6 @@ from sklearn.linear_model import LogisticRegression
 from sklearn.svm import SVC
 from sklearn.ensemble import RandomForestClassifier
 from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.model_selection import cross_val_score
-from sklearn.decomposition import PCA
 from sklearn.metrics import classification_report, confusion_matrix, f1_score
 from sklearn.metrics import accuracy_score, precision_score, recall_score
 from sklearn.metrics import precision_recall_curve, roc_curve, auc, log_loss
@@ -65,11 +62,16 @@ def split_train_val_test(train_percent=0.6,
         ready_list.extend(item_lists)
 
     # Write split data to file
-    ready_comments_split = pd.DataFrame(ready_list)
+    split_comments = pd.DataFrame(ready_list)
+    data_train, data_val, data_test, y_train, y_val, y_test = \
+        split_comments[split_comments['split'] == 'train']['Comment'], \
+        split_comments[split_comments['split'] == 'val']['Comment'], \
+        split_comments[split_comments['split'] == 'test']['Comment'], \
+        split_comments[split_comments['split'] == 'train']['Kind of offensive language'], \
+        split_comments[split_comments['split'] == 'val']['Kind of offensive language'], \
+        split_comments[split_comments['split'] == 'test']['Kind of offensive language']
 
-    return ready_comments_split
-    # Write munged data to CSV
-    # ready_comments_split.to_csv(args.output_csv, index=False)
+    return data_train, data_val, data_test, y_train, y_val, y_test
 
 
 def train_validation_test_split(data,
@@ -115,23 +117,19 @@ def train_validation_test_split(data,
                                                               random_state=random_state)
     # Split the temp dataframe into val and test dataframes.
     test_to_split = test_percent / (validate_percent + test_percent)
-    data_val, data_test, y_validate, y_test = train_test_split(data_temp,
-                                                                    y_temp,
-                                                                    stratify=y_temp,
-                                                                    test_size=test_to_split,
-                                                                    random_state=random_state)
+    data_val, data_test, y_val, y_test = train_test_split(data_temp,
+                                                          y_temp,
+                                                          stratify=y_temp,
+                                                          test_size=test_to_split,
+                                                          random_state=random_state)
 
     assert len(data) == len(data_train) + len(data_val) + len(data_test)
 
-    # Connect split data
-    data_train['split'] = 'train'
-    data_val['split'] = 'val'
-    data_test['split'] = 'test'
-    data = pd.concat([data_train, data_val, data_test])
-    data.reset_index(drop=True, inplace=True)
+    return data_train, data_val, data_test, y_train, y_val, y_test
 
-    return data
 
+result = ''
+the_best_result = ''
 
 result = ''
 the_best_result = ''
@@ -145,50 +143,51 @@ class Modeling:
 
         self.model = model
         self.title = title
-        self.X_train = X_train
-        self.y_train = y_train
+        self.X_sample = X_train
+        self.y_sample = y_train
         self.X_test = X_test
         self.result = ''
+
+    def sample(self, sampling):
+        self.sample = sampling
+        self.X_sample, self.y_sample = self.sample.fit_resample(
+            self.X_sample, self.y_sample)
 
     def fit_predict(self):
         """Function to train, predict our model and create roc curve"""
         self.classifier = self.model
-        self.classifier.fit(self.X_train, self.y_train)
+        self.classifier.fit(self.X_sample, self.y_sample)
         self.y_pred = self.classifier.predict(self.X_test)
         self.y_pred_proba = self.classifier.predict_proba(self.X_test)[:, 1]
-
-        self.y_train_proba = self.classifier.predict_proba(self.X_train)[:, 1]
-
-        self.fpr_train, self.tpr_train, self.thr_train = roc_curve(
-            self.y_train, self.y_train_proba)
-        self.fpr, self.tpr, self.thr = roc_curve(y_test, self.y_pred_proba)
+        self.y_train_proba = self.classifier.predict_proba(self.X_sample)[:, 1]
 
     def print_results(self):
         """Function to print our result"""
-        self.accuracy = round(accuracy_score(y_test, self.y_pred), 4)
-        self.f1 = round(f1_score(y_test, self.y_pred), 4)
-        self.recall = round(recall_score(y_test, self.y_pred), 4)
-        self.log_loss = round(log_loss(y_test, self.y_pred_proba), 4)
+        self.accuracy = round(accuracy_score(y_test, self.y_pred, 'weighted'),
+                              4)
+        self.f1 = round(f1_score(y_test, self.y_pred, average='weighted'), 4)
+        self.recall = round(
+            recall_score(y_test, self.y_pred, average='weighted'), 4)
+        #         self.log_loss = round(log_loss(y_test, self.y_pred_proba), 4)
 
         print(f'Results for {self.title}:')
         print(f'{self.title} accuracy: {self.accuracy}')
         print(f'{self.title} f-score: {self.f1}')
         print(f'{self.title} recall: {self.recall}')
-        print(f'{self.title} log_loss: {self.log_loss}')
+
+    #         print(f'{self.title} log_loss: {self.log_loss}')
 
     def add_to_table(self):
         """Function to add our result to dataframe to compare all"""
         global result
         if len(result) == 0:
-            result = {self.title: [self.accuracy, self.f1, self.recall,
-                                   self.log_loss]}
+            result = {self.title: [self.accuracy, self.f1, self.recall]}
             result = pd.DataFrame(result, index=['Accuracy', 'F-score',
-                                                 'Recall', 'Log_loss'])
+                                                 'Recall'])
         else:
-            conact = {self.title: [self.accuracy, self.f1, self.recall,
-                                   self.log_loss]}
+            conact = {self.title: [self.accuracy, self.f1, self.recall]}
             conact = pd.DataFrame(conact, index=['Accuracy', 'F-score',
-                                                 'Recall', 'Log_loss'])
+                                                 'Recall'])
             result = pd.concat([result, conact], axis=1)
 
     def plot_confusion_matrix(self):
