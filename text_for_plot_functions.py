@@ -2,6 +2,8 @@ import re
 import demoji
 import pandas as pd
 
+demoji.download_codes()
+
 def extract_emoticons(text: str,
                       emoji_for_response_0: list,
                       emoji_for_response_1: list,

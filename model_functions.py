@@ -6,32 +6,15 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 
-from argparse import Namespace
 from sklearn.model_selection import train_test_split
-from sklearn.preprocessing import LabelEncoder, StandardScaler, OneHotEncoder
-from sklearn.linear_model import LogisticRegression
-from sklearn.svm import SVC
-from sklearn.ensemble import RandomForestClassifier
-from sklearn.model_selection import GridSearchCV, train_test_split
-from sklearn.metrics import classification_report, confusion_matrix, f1_score
-from sklearn.metrics import accuracy_score, precision_score, recall_score
-from sklearn.metrics import precision_recall_curve, roc_curve, auc, log_loss
+from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, recall_score
 
 
 def split_train_val_test(train_percent=0.6,
                          val_percent=0.2,
                          test_percent=0.2):
-    args = Namespace(
-        dataset_csv="data_for_model.csv",
-        train_percent=train_percent,
-        val_percent=val_percent,
-        test_percent=test_percent,
-        output_csv="data_with_splits.csv",
-        seed=101
-    )
-
     # Read raw data
-    comments = pd.read_csv(args.dataset_csv, header=0)
+    comments = pd.read_csv('cleaned_data.csv', header=0)
 
     # Splitting train by nationality
     # Create dict
@@ -42,13 +25,13 @@ def split_train_val_test(train_percent=0.6,
 
     # Create split data
     ready_list = []
-    np.random.seed(args.seed)
+    np.random.seed(101)
     for _, item_lists in sorted(by_kind_language.items()):
         np.random.shuffle(item_lists)
         n = len(item_lists)
-        n_train = int(args.train_percent * n)
-        n_val = int(args.val_percent * n)
-        n_test = int(args.test_percent * n)
+        n_train = int(train_percent * n)
+        n_val = int(val_percent * n)
+        n_test = int(test_percent * n)
 
         # Give data point a split attribute
         for item in item_lists[:n_train]:
@@ -74,8 +57,7 @@ def split_train_val_test(train_percent=0.6,
     return data_train, data_val, data_test, y_train, y_val, y_test
 
 
-def train_validation_test_split(data,
-                                col_stratify='Kind of offensive language',
+def train_validation_test_split(col_stratify='Kind of offensive language',
                                 train_percent=0.6,
                                 validate_percent=0.2,
                                 test_percent=0.2,
@@ -99,6 +81,8 @@ def train_validation_test_split(data,
         data_train, data_val, data_test : Dataframes containing the three splits.
     '''
 
+    data = pd.read_csv('cleaned_data.csv', header=0)
+
     if train_percent + validate_percent + test_percent != 1.0:
         raise ValueError(f'Sum of train, validate and test is not 1.0')
 
@@ -117,87 +101,68 @@ def train_validation_test_split(data,
                                                               random_state=random_state)
     # Split the temp dataframe into val and test dataframes.
     test_to_split = test_percent / (validate_percent + test_percent)
-    data_val, data_test, y_val, y_test = train_test_split(data_temp,
-                                                          y_temp,
-                                                          stratify=y_temp,
-                                                          test_size=test_to_split,
-                                                          random_state=random_state)
+    data_val, data_test, y_val, y_val = train_test_split(data_temp,
+                                                         y_temp,
+                                                         stratify=y_temp,
+                                                         test_size=test_to_split,
+                                                         random_state=random_state)
 
     assert len(data) == len(data_train) + len(data_val) + len(data_test)
 
-    return data_train, data_val, data_test, y_train, y_val, y_test
-
-
-result = ''
-the_best_result = ''
-
-result = ''
-the_best_result = ''
+    return data_train, data_val, data_test, y_train, y_val, y_val
 
 
 class Modeling:
     """Modeling and presentation of results"""
 
-    def __init__(self, model, X_train, X_test, title):
+    def __init__(self, model, X_train, X_val, y_train, y_val, result, title):
         """Inicjalization"""
-
         self.model = model
         self.title = title
         self.X_sample = X_train
         self.y_sample = y_train
-        self.X_test = X_test
-        self.result = ''
+        self.X_test = X_val
+        self.y_val = y_val
+        self.result = result
 
     def sample(self, sampling):
         self.sample = sampling
-        self.X_sample, self.y_sample = self.sample.fit_resample(
-            self.X_sample, self.y_sample)
+        self.X_sample, self.y_sample = self.sample.fit_resample(self.X_sample, self.y_sample)
 
     def fit_predict(self):
         """Function to train, predict our model and create roc curve"""
         self.classifier = self.model
         self.classifier.fit(self.X_sample, self.y_sample)
         self.y_pred = self.classifier.predict(self.X_test)
-        self.y_pred_proba = self.classifier.predict_proba(self.X_test)[:, 1]
-        self.y_train_proba = self.classifier.predict_proba(self.X_sample)[:, 1]
 
     def print_results(self):
         """Function to print our result"""
-        self.accuracy = round(accuracy_score(y_test, self.y_pred, 'weighted'),
-                              4)
-        self.f1 = round(f1_score(y_test, self.y_pred, average='weighted'), 4)
-        self.recall = round(
-            recall_score(y_test, self.y_pred, average='weighted'), 4)
-        #         self.log_loss = round(log_loss(y_test, self.y_pred_proba), 4)
+        self.accuracy = round(accuracy_score(self.y_val, self.y_pred, 'weighted'), 4)
+        self.f1 = round(f1_score(self.y_val, self.y_pred, average='weighted'), 4)
+        self.recall = round(recall_score(self.y_val, self.y_pred, average='weighted'), 4)
 
         print(f'Results for {self.title}:')
         print(f'{self.title} accuracy: {self.accuracy}')
         print(f'{self.title} f-score: {self.f1}')
         print(f'{self.title} recall: {self.recall}')
 
-    #         print(f'{self.title} log_loss: {self.log_loss}')
-
     def add_to_table(self):
         """Function to add our result to dataframe to compare all"""
-        global result
-        if len(result) == 0:
-            result = {self.title: [self.accuracy, self.f1, self.recall]}
-            result = pd.DataFrame(result, index=['Accuracy', 'F-score',
-                                                 'Recall'])
+        if len(self.result) == 0:
+            self.result = {self.title: [self.accuracy, self.f1, self.recall]}
+            self.result = pd.DataFrame(self.result, index=['Accuracy', 'F-score', 'Recall'])
+            return self.result
         else:
             conact = {self.title: [self.accuracy, self.f1, self.recall]}
-            conact = pd.DataFrame(conact, index=['Accuracy', 'F-score',
-                                                 'Recall'])
-            result = pd.concat([result, conact], axis=1)
+            conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Recall'])
+            self.result = pd.concat([self.result, conact], axis=1)
+            return self.result
 
     def plot_confusion_matrix(self):
         """plot confusion matrix"""
         plt.figure(figsize=(10, 10), facecolor='w')
-        sns.heatmap(confusion_matrix(y_test, self.y_pred), annot=True,
-                    fmt='.0f',
-                    cbar=False,
-                    vmax=confusion_matrix(y_test, self.y_pred).max(),
-                    vmin=0, cmap='Blues')
+        sns.heatmap(confusion_matrix(self.y_val, self.y_pred), annot=True, fmt='.0f', cbar=False,
+                    vmax=confusion_matrix(self.y_val, self.y_pred).max(), vmin=0, cmap='Blues')
         plt.xlabel('Predicted label')
         plt.ylabel('True label')
         plt.title(f'Confusion matrix for {self.title}')
@@ -205,10 +170,23 @@ class Modeling:
     def plot_confusion_matrix_percent(self):
         """Plot confusion matrix with part of 1 value"""
         plt.figure(figsize=(10, 10), facecolor='w')
-        cm = confusion_matrix(y_test, self.y_pred)
+        cm = confusion_matrix(self.y_val, self.y_pred)
         cm_norm = cm.astype('float') / cm.sum(axis=1)[:, np.newaxis]
         df_cm = pd.DataFrame(cm_norm)
         sns.heatmap(df_cm, annot=True, cmap="Blues", cbar=False)
         plt.xlabel('Predicted label')
         plt.ylabel('True label')
         plt.title(f'Confusion matrix for {self.title}')
+
+
+# Function for XGBoost
+def add_to_table_xgboost(y_val, preds, result, title):
+    '''Function for display result XGBoost'''
+
+    accuracy = round(accuracy_score(y_val, preds, 'weighted'), 4)
+    f1 = round(f1_score(y_val, preds, average='weighted'), 4)
+    recall = round(recall_score(y_val, preds, average='weighted'), 4)
+    conact = {title: [accuracy, f1, recall]}
+    conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Recall'])
+    result = pd.concat([result, conact], axis=1)
+    return result
