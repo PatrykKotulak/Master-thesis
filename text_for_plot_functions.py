@@ -2,7 +2,7 @@ import re
 import demoji
 import pandas as pd
 
-demoji.download_codes()
+# demoji.download_codes()
 
 def extract_emoticons(text: str,
                       emoji_for_response_0: list,
@@ -47,3 +47,10 @@ def create_dataframe_emoji_comparison(dict_count_emoji_0: dict,
                                       (plot_emoticons['Response_1'].isna()) &
                                       (plot_emoticons['Response_2'].isna()))]
     return plot_emoticons
+
+
+def clean_text_emoji(data):
+    # remove of @name
+    pattern = re.compile(r'\S*_+\S*')
+    data = data.str.replace(pattern, '')
+    return data

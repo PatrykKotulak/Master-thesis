@@ -12,7 +12,8 @@ from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, recall_s
 
 def split_train_val_test(train_percent=0.6,
                          val_percent=0.2,
-                         test_percent=0.2):
+                         test_percent=0.2,
+                         visualization=False):
     # Read raw data
     comments = pd.read_csv('cleaned_data.csv', header=0)
 
@@ -46,15 +47,18 @@ def split_train_val_test(train_percent=0.6,
 
     # Write split data to file
     split_comments = pd.DataFrame(ready_list)
-    data_train, data_val, data_test, y_train, y_val, y_test = \
-        split_comments[split_comments['split'] == 'train']['Comment'], \
-        split_comments[split_comments['split'] == 'val']['Comment'], \
-        split_comments[split_comments['split'] == 'test']['Comment'], \
-        split_comments[split_comments['split'] == 'train']['Kind of offensive language'], \
-        split_comments[split_comments['split'] == 'val']['Kind of offensive language'], \
-        split_comments[split_comments['split'] == 'test']['Kind of offensive language']
+    if not visualization:
+        data_train, data_val, data_test, y_train, y_val, y_test = \
+            split_comments[split_comments['split'] == 'train']['Comment'], \
+            split_comments[split_comments['split'] == 'val']['Comment'], \
+            split_comments[split_comments['split'] == 'test']['Comment'], \
+            split_comments[split_comments['split'] == 'train']['Kind of offensive language'], \
+            split_comments[split_comments['split'] == 'val']['Kind of offensive language'], \
+            split_comments[split_comments['split'] == 'test']['Kind of offensive language']
 
-    return data_train, data_val, data_test, y_train, y_val, y_test
+        return data_train, data_val, data_test, y_train, y_val, y_test
+    else:
+        return split_comments
 
 
 def train_validation_test_split(col_stratify='Kind of offensive language',
@@ -190,3 +194,13 @@ def add_to_table_xgboost(y_val, preds, result, title):
     conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Recall'])
     result = pd.concat([result, conact], axis=1)
     return result
+
+
+def plot_confusion_matrix(y_val, preds, title):
+    """plot confusion matrix"""
+    plt.figure(figsize=(10, 10), facecolor='w')
+    sns.heatmap(confusion_matrix(y_val, preds), annot=True, fmt='.0f', cbar=False,
+                vmax=confusion_matrix(y_val, preds).max(), vmin=0, cmap='Blues')
+    plt.xlabel('Predicted label')
+    plt.ylabel('True label')
+    plt.title(f'Confusion matrix for {title}')

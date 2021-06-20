@@ -2,11 +2,14 @@ import re
 import collections
 import emoji
 import pandas as pd
+import numpy as np
+import torch
 
 # processing of text
 import spacy
 from autocorrect import Speller
 from stopwords import stopwords
+from sklearn.feature_extraction.text import CountVectorizer, TfidfVectorizer
 
 # load and download
 spell = Speller('pl')
@@ -82,13 +85,12 @@ class Preprocessing:
     def stopwords_remove(self):
         self.x_raw = self.x_raw.apply(lambda x: x.split())
         self.x_raw = self.x_raw.apply(
-            lambda x: [item for item in x if item not in stopwords and len(item) >= 3])
+            lambda x: [item for item in x if item not in stopwords and len(item) >= 2])
         for i in range(len(self.x_raw)):
             self.x_raw[i] = ' '.join(self.x_raw[i])
 
     def lemmatize_text(self):
-        self.x_raw = self.x_raw.apply(
-            lambda x: [token.lemma_ for token in lemma_spacy(x)])
+        self.x_raw = self.x_raw.apply(lambda x: [token.lemma_ for token in lemma_spacy(x)])
 
     def correct_typo_words(self):
         for _, row_list in self.x_raw.items():
@@ -108,7 +110,79 @@ class Preprocessing:
 
     def token_join(self):
         self.x_raw = self.x_raw.apply(lambda x: ' '.join(x))
+        self.file_write = pd.concat([self.x_raw, self.y], axis=1)
+        self.file_write.replace('', np.nan, inplace=True)
+        self.file_write.dropna(inplace=True)
 
     def write_to_file(self, name='cleaned_data'):
-        file_write = pd.concat([self.x_raw, self.y], axis=1)
-        file_write.to_csv(f'{name}.csv', index=False)
+        self.file_write.to_csv(f'{name}.csv', index=False)
+
+    def split_train_val_test(self, train_percent=0.6,
+                             val_percent=0.2,
+                             test_percent=0.2,
+                             visualization=False):
+        # Read raw data
+        comments = pd.read_csv('cleaned_data.csv', header=0)
+
+        # Splitting train by nationality
+        # Create dict
+        by_kind_language = collections.defaultdict(list)
+        for _, row in comments.iterrows():
+            by_kind_language[row['Kind of offensive language']].append(
+                row.to_dict())
+
+        # Create split data
+        ready_list = []
+        np.random.seed(101)
+        for _, item_lists in sorted(by_kind_language.items()):
+            np.random.shuffle(item_lists)
+            n = len(item_lists)
+            n_train = int(train_percent * n)
+            n_val = int(val_percent * n)
+            n_test = int(test_percent * n)
+
+            # Give data point a split attribute
+            for item in item_lists[:n_train]:
+                item['split'] = 'train'
+            for item in item_lists[n_train:n_train + n_val]:
+                item['split'] = 'val'
+            for item in item_lists[n_train + n_val:]:
+                item['split'] = 'test'
+
+                # Add to final list
+            ready_list.extend(item_lists)
+
+        # Write split data to file
+        split_comments = pd.DataFrame(ready_list)
+        if not visualization:
+            self.X_train, self.X_val, self.X_test, self.y_train, self.y_val, self.y_test = \
+                split_comments[split_comments['split'] == 'train']['Comment'], \
+                split_comments[split_comments['split'] == 'val']['Comment'], \
+                split_comments[split_comments['split'] == 'test']['Comment'], \
+                split_comments[split_comments['split'] == 'train']['Kind of offensive language'], \
+                split_comments[split_comments['split'] == 'val']['Kind of offensive language'], \
+                split_comments[split_comments['split'] == 'test']['Kind of offensive language']
+
+            # return self.X_train, self.X_val, self.X_test, self.y_train, self.y_val, self.y_test
+        else:
+            return split_comments
+
+    def count_vectorizer(self):
+        vectorizer = CountVectorizer()
+        self.X_train = vectorizer.fit_transform(self.X_train.astype('U').values)
+        self.X_val = vectorizer.transform(self.X_val.astype('U').values)
+        self.X_test = vectorizer.transform(self.X_test.astype('U').values)
+
+    def tfidf_vectorizer(self):
+        tfidf_vectorizer = TfidfVectorizer()
+        self.X_train = tfidf_vectorizer.fit_transform(self.X_train.astype('U').values)
+        self.X_val = tfidf_vectorizer.transform(self.X_val.astype('U').values)
+        self.X_test = tfidf_vectorizer.transform(self.X_test.astype('U').values)
+
+    def sparse_to_tensor(self):
+        self.X_train = torch.from_numpy(self.X_train.todense()).float()
+        self.X_val = torch.from_numpy(self.X_val.todense()).float()
+        self.X_test = torch.from_numpy(self.X_test.todense()).float()
+        self.y_train = torch.from_numpy(np.array(self.y_train))
+        self.y_val = torch.from_numpy(np.array(self.y_val))
+        self.y_test = torch.from_numpy(np.array(self.y_test))
