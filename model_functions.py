@@ -5,9 +5,14 @@ import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
+import xgboost
 
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, recall_score
+from xgboost import XGBClassifier
+from sklearn.pipeline import Pipeline
+from transformers import GensimWord2VecVectorizer
+from imblearn.over_sampling import SMOTE
 
 
 def split_train_val_test(train_percent=0.6,
@@ -66,7 +71,7 @@ def train_validation_test_split(col_stratify='Kind of offensive language',
                                 validate_percent=0.2,
                                 test_percent=0.2,
                                 random_state=101):
-    '''
+    """
     Splits a Pandas dataframe into three subsets (train, val, and test).
     Function uses train_test_split (from sklearn) and stratify to receive
     the same ratio response (y, target) in each splits.
@@ -83,7 +88,7 @@ def train_validation_test_split(col_stratify='Kind of offensive language',
 
     Returns
         data_train, data_val, data_test : Dataframes containing the three splits.
-    '''
+    """
 
     data = pd.read_csv('cleaned_data.csv', header=0)
 
@@ -120,7 +125,7 @@ class Modeling:
     """Modeling and presentation of results"""
 
     def __init__(self, model, X_train, X_val, y_train, y_val, result, title):
-        """Inicjalization"""
+        """Initialization"""
         self.model = model
         self.title = title
         self.X_sample = X_train
@@ -184,23 +189,49 @@ class Modeling:
 
 
 # Function for XGBoost
-def add_to_table_xgboost(y_val, preds, result, title):
-    '''Function for display result XGBoost'''
 
-    accuracy = round(accuracy_score(y_val, preds, 'weighted'), 4)
-    f1 = round(f1_score(y_val, preds, average='weighted'), 4)
-    recall = round(recall_score(y_val, preds, average='weighted'), 4)
+def XG_boost_smote(X_train, y_train, X_val, y_val, max_depth=50, eta=0.5, objective='multi:softmax', num_class=3,
+                   epochs=100):
+    param = {'max_depth': max_depth, 'eta': eta, 'objective': objective, 'num_class': num_class}
+    epochs = epochs
+
+    oversample = SMOTE()
+    X_train_s, y_train_s = oversample.fit_resample(X_train, y_train)
+    train = xgboost.DMatrix(X_train_s, label=y_train_s)
+    val = xgboost.DMatrix(X_val, label=y_val)
+    bst = xgboost.train(param, train, epochs)
+    y_preds = bst.predict(val)
+    return y_preds
+
+
+def XG_boost_gensim(X_train, X_test, y_train, size=100, min_count=3, sg=1, alpha=0.025, iter=50, learning_rate=0.01,
+                    n_estimators=100, n_jobs=-1):
+    gensim_word2vec = GensimWord2VecVectorizer(size=size, min_count=min_count, sg=sg, alpha=alpha, iter=iter)
+    xgb = XGBClassifier(learning_rate=learning_rate, n_estimators=n_estimators, n_jobs=n_jobs)
+    w2v_xgb = Pipeline([('w2v', gensim_word2vec), ('xgb', xgb)])
+    w2v_xgb.fit(X_train, y_train)
+    y_pred = w2v_xgb.predict(X_test)
+    return y_pred
+
+
+def add_to_table_xgboost(y_val, y_pred, result, title):
+    """Function for display result XGBoost"""
+
+    accuracy = round(accuracy_score(y_val, y_pred, 'weighted'), 4)
+    f1 = round(f1_score(y_val, y_pred, average='weighted'), 4)
+    recall = round(recall_score(y_val, y_pred, average='weighted'), 4)
     conact = {title: [accuracy, f1, recall]}
     conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Recall'])
     result = pd.concat([result, conact], axis=1)
     return result
 
 
-def plot_confusion_matrix(y_val, preds, title):
+def plot_confusion_matrix(y_val, y_pred, title):
     """plot confusion matrix"""
     plt.figure(figsize=(10, 10), facecolor='w')
-    sns.heatmap(confusion_matrix(y_val, preds), annot=True, fmt='.0f', cbar=False,
-                vmax=confusion_matrix(y_val, preds).max(), vmin=0, cmap='Blues')
+    sns.heatmap(confusion_matrix(y_val, y_pred), annot=True, fmt='.0f', cbar=False,
+                vmax=confusion_matrix(y_val, y_pred).max(), vmin=0, cmap='Blues')
     plt.xlabel('Predicted label')
     plt.ylabel('True label')
     plt.title(f'Confusion matrix for {title}')
+

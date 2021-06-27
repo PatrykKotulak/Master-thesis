@@ -120,9 +120,10 @@ class Preprocessing:
     def split_train_val_test(self, train_percent=0.6,
                              val_percent=0.2,
                              test_percent=0.2,
-                             visualization=False):
+                             visualization=False,
+                             file_name='cleaned_data'):
         # Read raw data
-        comments = pd.read_csv('cleaned_data.csv', header=0)
+        comments = pd.read_csv(f'{file_name}.csv', header=0)
 
         # Splitting train by nationality
         # Create dict
@@ -162,27 +163,25 @@ class Preprocessing:
                 split_comments[split_comments['split'] == 'train']['Kind of offensive language'], \
                 split_comments[split_comments['split'] == 'val']['Kind of offensive language'], \
                 split_comments[split_comments['split'] == 'test']['Kind of offensive language']
-
-            # return self.X_train, self.X_val, self.X_test, self.y_train, self.y_val, self.y_test
         else:
             return split_comments
 
     def count_vectorizer(self):
         vectorizer = CountVectorizer()
-        self.X_train = vectorizer.fit_transform(self.X_train.astype('U').values)
-        self.X_val = vectorizer.transform(self.X_val.astype('U').values)
-        self.X_test = vectorizer.transform(self.X_test.astype('U').values)
+        self.X_train_cv = vectorizer.fit_transform(self.X_train.astype('U').values)
+        self.X_val_cv = vectorizer.transform(self.X_val.astype('U').values)
+        self.X_test_cv = vectorizer.transform(self.X_test.astype('U').values)
 
     def tfidf_vectorizer(self):
         tfidf_vectorizer = TfidfVectorizer()
-        self.X_train = tfidf_vectorizer.fit_transform(self.X_train.astype('U').values)
-        self.X_val = tfidf_vectorizer.transform(self.X_val.astype('U').values)
-        self.X_test = tfidf_vectorizer.transform(self.X_test.astype('U').values)
+        self.X_train_tfidf = tfidf_vectorizer.fit_transform(self.X_train.astype('U').values)
+        self.X_val_tfidf = tfidf_vectorizer.transform(self.X_val.astype('U').values)
+        self.X_test_tfidf = tfidf_vectorizer.transform(self.X_test.astype('U').values)
 
-    def sparse_to_tensor(self):
-        self.X_train = torch.from_numpy(self.X_train.todense()).float()
-        self.X_val = torch.from_numpy(self.X_val.todense()).float()
-        self.X_test = torch.from_numpy(self.X_test.todense()).float()
-        self.y_train = torch.from_numpy(np.array(self.y_train))
-        self.y_val = torch.from_numpy(np.array(self.y_val))
-        self.y_test = torch.from_numpy(np.array(self.y_test))
+    def sparse_to_tensor(self, X_train, X_val, X_test):
+        self.X_train_tensor = torch.from_numpy(X_train.todense()).float()
+        self.X_val_tensor = torch.from_numpy(X_val.todense()).float()
+        self.X_test_tensor = torch.from_numpy(X_test.todense()).float()
+        self.y_train_tensor = torch.from_numpy(np.array(self.y_train))
+        self.y_val_tensor = torch.from_numpy(np.array(self.y_val))
+        self.y_test_tensor = torch.from_numpy(np.array(self.y_test))
