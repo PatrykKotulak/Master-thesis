@@ -178,10 +178,3 @@ class Preprocessing:
         self.X_val_tfidf = tfidf_vectorizer.transform(self.X_val.astype('U').values)
         self.X_test_tfidf = tfidf_vectorizer.transform(self.X_test.astype('U').values)
 
-    def sparse_to_tensor(self, X_train, X_val, X_test):
-        self.X_train_tensor = torch.from_numpy(X_train.todense()).float()
-        self.X_val_tensor = torch.from_numpy(X_val.todense()).float()
-        self.X_test_tensor = torch.from_numpy(X_test.todense()).float()
-        self.y_train_tensor = torch.from_numpy(np.array(self.y_train))
-        self.y_val_tensor = torch.from_numpy(np.array(self.y_val))
-        self.y_test_tensor = torch.from_numpy(np.array(self.y_test))
