@@ -53,14 +53,18 @@ class Preprocessing:
         self.x_raw = self.x_raw.apply(
             lambda x: emoji.demojize(x, delimiters=("~~", "~~")))
 
-    def clean_text(self):
+    def clean_text(self, with_emoji=True):
         # remove of @name
         pattern = re.compile(r'@\w+[\s]*')
         self.x_raw = self.x_raw.str.replace(pattern, '')
 
         # split emoji
-        pattern = re.compile(r"~{2}")
-        self.x_raw = self.x_raw.str.replace(pattern, ' ')
+        if with_emoji:
+            pattern = re.compile(r"~{2}")
+            self.x_raw = self.x_raw.str.replace(pattern, ' ')
+        else:
+            pattern = re.compile(r"~{2}.+?~{2}")
+            self.x_raw = self.x_raw.str.replace(pattern, '')
 
         # remove of links https
         pattern = re.compile(r"https?[:\/\/]+[a-zA-Z0-9.\-\/?=_~:#%]+")
