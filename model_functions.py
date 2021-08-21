@@ -190,6 +190,18 @@ class Modeling:
 
 # Function for XGBoost
 
+def XG_boost(X_train, y_train, X_val, y_val, max_depth=50, eta=0.5, objective='multi:softmax', num_class=3,
+                   epochs=100):
+    param = {'max_depth': max_depth, 'eta': eta, 'objective': objective, 'num_class': num_class}
+    epochs = epochs
+
+    train = xgboost.DMatrix(X_train, label=y_train)
+    val = xgboost.DMatrix(X_val, label=y_val)
+    bst = xgboost.train(param, train, epochs)
+    y_preds = bst.predict(val)
+    return y_preds
+
+
 def XG_boost_smote(X_train, y_train, X_val, y_val, max_depth=50, eta=0.5, objective='multi:softmax', num_class=3,
                    epochs=100):
     param = {'max_depth': max_depth, 'eta': eta, 'objective': objective, 'num_class': num_class}

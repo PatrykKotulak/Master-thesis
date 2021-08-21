@@ -121,9 +121,9 @@ class Preprocessing:
     def write_to_file(self, name='cleaned_data'):
         self.file_write.to_csv(f'{name}.csv', index=False)
 
-    def split_train_val_test(self, train_percent=0.6,
-                             val_percent=0.2,
-                             test_percent=0.2,
+    def split_train_val_test(self, train_percent=0.7,
+                             val_percent=0.15,
+                             test_percent=0.15,
                              visualization=False,
                              file_name='cleaned_data'):
         # Read raw data
