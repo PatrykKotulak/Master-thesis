@@ -1,2 +1,16 @@
 # Library dependencies for the python code.  You need to install these with
 # `pip install -r requirements.txt` before you can run this.
+
+emoji~=1.2.0
+pandas~=1.0.5
+spacy~=2.2.4
+autocorrect~=2.5.0
+matplotlib~=3.3.4
+wordcloud~=1.8.1
+numpy~=1.19.1
+seaborn~=0.11.1
+scikit-learn~=0.23.1
+demoji~=0.4.0
+gensim~=3.8.0
+xgboost~=1.1.1
+imblearn~=0.0
