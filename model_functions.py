@@ -8,7 +8,7 @@ import seaborn as sns
 import xgboost
 
 from sklearn.model_selection import train_test_split
-from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, recall_score
+from sklearn.metrics import confusion_matrix, f1_score, accuracy_score, precision_score
 from xgboost import XGBClassifier
 from sklearn.pipeline import Pipeline
 from transformers import GensimWord2VecVectorizer
@@ -148,22 +148,22 @@ class Modeling:
         """Function to print our result"""
         self.accuracy = round(accuracy_score(self.y_val, self.y_pred, 'weighted'), 4)
         self.f1 = round(f1_score(self.y_val, self.y_pred, average='weighted'), 4)
-        self.recall = round(recall_score(self.y_val, self.y_pred, average='weighted'), 4)
+        self.precision = round(precision_score(self.y_val, self.y_pred, average='weighted'), 4)
 
         print(f'Results for {self.title}:')
         print(f'{self.title} accuracy: {self.accuracy}')
         print(f'{self.title} f-score: {self.f1}')
-        print(f'{self.title} recall: {self.recall}')
+        print(f'{self.title} precision: {self.precision}')
 
     def add_to_table(self):
         """Function to add our result to dataframe to compare all"""
         if len(self.result) == 0:
-            self.result = {self.title: [self.accuracy, self.f1, self.recall]}
-            self.result = pd.DataFrame(self.result, index=['Accuracy', 'F-score', 'Recall'])
+            self.result = {self.title: [self.accuracy, self.f1, self.precision]}
+            self.result = pd.DataFrame(self.result, index=['Accuracy', 'F-score', 'Precision'])
             return self.result
         else:
-            conact = {self.title: [self.accuracy, self.f1, self.recall]}
-            conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Recall'])
+            conact = {self.title: [self.accuracy, self.f1, self.precision]}
+            conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Precision'])
             self.result = pd.concat([self.result, conact], axis=1)
             return self.result
 
@@ -231,9 +231,9 @@ def add_to_table_xgboost(y_val, y_pred, result, title):
 
     accuracy = round(accuracy_score(y_val, y_pred, 'weighted'), 4)
     f1 = round(f1_score(y_val, y_pred, average='weighted'), 4)
-    recall = round(recall_score(y_val, y_pred, average='weighted'), 4)
-    conact = {title: [accuracy, f1, recall]}
-    conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Recall'])
+    precision = round(precision_score(y_val, y_pred, average='weighted'), 4)
+    conact = {title: [accuracy, f1, precision]}
+    conact = pd.DataFrame(conact, index=['Accuracy', 'F-score', 'Precision'])
     result = pd.concat([result, conact], axis=1)
     return result
 
